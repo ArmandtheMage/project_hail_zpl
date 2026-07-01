@@ -1,6 +1,7 @@
 
 
 from ast import main
+import os
 from py_compile import main
 import sys
 
@@ -11,6 +12,10 @@ from tkinter import filedialog
 from tkinter import filedialog
 
 LABEL_WIDTH = 15
+import sys
+import os
+sys.path.append(os.path.join(os.getcwd(), "azure_project"))
+sys.path.append(os.path.join(os.getcwd(), "export"))
 
 print("stiamo aprendo la GUI!")
 def apri_gui():
@@ -21,6 +26,8 @@ def apri_gui():
 
     risultati = {}
 
+    az = AzureHandler()
+    ex = ExcelHandler()
     
     def conferma():
         #valori comuni
@@ -45,6 +52,60 @@ def apri_gui():
         risultati["found_in_build"] = entry_found_in_build.get()
         risultati["issue_path"] = entry_issue_path.get()
 
+        # id, title, workitemtype, state, tags
+        table_titles = ["id", "workItemType", "title", "state", "tags", "notes"]
+        
+        if stati["Testcase"]:
+            testcase_titles = ["suiteId", "testSuite", "testCaseId", "testCase", "outcome", "configuration", "configurationValue", "note"]
+            data = az.get_test_data(
+                project_id=risultati["project_name"],
+                plan_id=risultati["tp"],
+                suites_id=risultati["TestSuite_id"]
+            )
+            id_trest_suite  = ex.make_new_sheet("Testcase")
+            ex.set_common_header()
+            ex.set_datasheet(
+                section="ELENCO TEST CASE / TEST CASE LIST",
+                table_titles=testcase_titles,
+                data=data
+            )
+
+        if stati["Issue"]:
+            query_issue = az.make_query(
+                project_name=risultati["project_name"],
+                area_path=risultati["issue_path"],
+                found_in_build=risultati["found_in_build"]
+            ).work_items
+
+            ex.make_new_sheet("Issue")
+            ex.set_common_header()
+            wi_list = []
+            for wi_ref in query_issue:
+                wi_list.append(az.work_item_tracking_client.get_work_item(wi_ref.id))
+            ex.set_datasheet(
+                section="ELENCO ISSUE E BUG / ISSUE AND BUG LIST",
+                table_titles=table_titles,
+                data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
+            )
+
+        if stati["Changelog"]:
+            query_changelog = az.make_query(
+                project_name=risultati["project_name"],
+                area_path=risultati["changelog_path"],
+                product_version=risultati["fw_version"]
+            ).work_items
+            ex.make_new_sheet("Changelog")
+            ex.set_common_header()
+            wi_list = []
+            for wi_ref in query_changelog:
+                wi_list.append(az.work_item_tracking_client.get_work_item(wi_ref.id))
+            ex.set_datasheet(
+                section="ELENCO CHANGELOG / CHANGELOG LIST",
+                table_titles=table_titles,
+                data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
+            )
+
+        ex.save(filename=f"Frontend_Web_v{risultati['fw_version']}", parent_path=risultati["path"])
         root.destroy()
 
     # --- TOGGLE ---
@@ -114,7 +175,6 @@ def apri_gui():
         "HappyHome10",
         "Fenice",
         "ThermoICE2",
-        "Joinon",
         "SmartRF",
         "JOINON EVO - RaaS and APP",
         "Energy_Metering",
@@ -221,4 +281,9 @@ def apri_gui():
 #------------------------------FINE GUI-----------------------------
 #-------------------------------------------------------------------
 
-parametri = apri_gui()
+
+from azure_handler import AzureHandler
+from excel_handler import ExcelHandler
+
+if __name__ == "__main__":
+    parametri = apri_gui()

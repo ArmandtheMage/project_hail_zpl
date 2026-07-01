@@ -40,7 +40,7 @@ class  QueryMaker:
         query += f"[System.TeamProject] = '{project_name} '"
         query += " ".join([f"{constraint.logic_operator} {constraint.field} {constraint.operator} '{constraint.value}'" for constraint in self.constraints])
         return query
-    
+
 class QueryConstraints:
     LOGIC_OPERATORS = ["AND", "OR"]
     COMPARISON_OPERATORS = ["=", "<>", ">", "<", ">=", "<=", "CONTAINS", "DOES NOT CONTAIN", "IN", "NOT IN"]

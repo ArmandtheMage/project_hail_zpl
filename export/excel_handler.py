@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 
 from openpyxl import Workbook
@@ -134,23 +135,37 @@ class ExcelHandler:
                     raise ValueError(f"Data row has more columns than titles. Row data: {row_data}, Titles: {table_titles}")
                 self.sheet[f"{chr(66 + col_offset)}{start_row + 2 + offset}"] = value
 
-    def save(self, filename: str = "report_zpl.xlsx", parent_path: str = ""):
+    def make_new_sheet(self, sheet_name: str):
+        """
+        Create a new sheet with the specified name.
+        """
+        self.sheet = self.workbook.create_sheet(title=sheet_name)
+        
+
+    def save(self, filename: str = "", parent_path: str = ""):
         if not parent_path:
             parent_path = os.getcwd()
+        if not filename:
+            filename = f"report_zpl"
+        if not filename.endswith(".xlsx"):
+            filename += ".xlsx"
+        
+        filename = filename.replace(".xlsx", f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
+
         full_path = os.path.join(parent_path, filename)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
 
-
 if __name__ == "__main__":
     excel_handler = ExcelHandler()
     excel_handler.set_common_header()
-    excel_handler.set_datasheet(section = "ELENCO ISSUE E BUG / ISSUE AND BUG LIST", table_titles=[        
+    excel_handler.set_datasheet(section = "ELENCO ISSUE E BUG / ISSUE AND BUG LIST",
+        table_titles=[        
         "TYPE",
         "ID SEGNALAZIONE",
         "TITOLO",
         "ID TEST FAIL",
-        "NOTE"], 
+        "NOTE"],
         data=[("Issue", "456789", "Titolo 1", "ID Test 1"),
               ("Bug", "123456", "Titolo 2")])
     excel_handler.save("test_report.xlsx")

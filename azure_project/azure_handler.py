@@ -8,7 +8,7 @@ from msrest.authentication import BasicAuthentication
 from azure.devops.v7_0.test.test_client import TestClient
 from azure.devops.v7_0.test_plan.test_plan_client import TestPlanClient
 from azure.devops.v7_0.test_plan.models import *
-
+from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkItemTrackingClient
 from  query_handler import QueryMaker, QueryConstraints
 
 
@@ -21,10 +21,10 @@ class AzureHandler:
     def __init__(self):
         self.credentials = BasicAuthentication('', personal_access_token)
         self.connection = Connection(base_url=organization_url, creds=self.credentials)
-        self.core_client = self.connection.clients.get_core_client()
-        self.test_client = self.connection.clients.get_test_client()
-        self.test_plan_client = self.connection.clients.get_test_plan_client()
-        self.work_item_tracking_client = self.connection.clients_v7_0.get_work_item_tracking_client()
+        self.core_client :CoreClient = self.connection.clients.get_core_client()
+        self.test_client :TestClient = self.connection.clients.get_test_client()
+        self.test_plan_client :TestPlanClient = self.connection.clients.get_test_plan_client()
+        self.work_item_tracking_client :WorkItemTrackingClient = self.connection.clients_v7_0.get_work_item_tracking_client()
         self.query_maker = QueryMaker(self.connection)
 
     def get_projects(self):

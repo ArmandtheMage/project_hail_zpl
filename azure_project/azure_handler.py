@@ -41,7 +41,7 @@ class AzureHandler:
         return self.test_plan_client.get_test_plans(project=project_id)
 
     def get_test_suites(self, project_id, plan_id, expand:bool = True):
-        return self.test_plan_client.get_test_suites_from_plan(project=project_id, plan_id=plan_id, expand=expand)
+        return self.test_plan_client.get_test_suites_for_plan(project=project_id, plan_id=plan_id, expand=expand)
 
     def get_test_cases(self, project_id, plan_id, suite_id):
         return self.test_plan_client.get_points_list(
@@ -53,10 +53,18 @@ class AzureHandler:
                 include_point_details=True
         )
     
-    def get_test_data(self, project_id, plan_id, suites_id):
+    def get_test_data(self, project_id, plan_id, suites_id:list = []):
         test_points = []
+        print(f"Fetching test data for project_id: {project_id}, plan_id: {plan_id}, suites_id: {suites_id}")
+        if not suites_id:
+            print(f"No suites_id provided. Fetching all test suites for project_id: {project_id} and plan_id: {plan_id}")
+            test_suites = self.get_test_suites(project_id, plan_id)
+            suites_id = [suite.id for suite in test_suites]
+            
         for suite_id in suites_id:
+            suite = self.test_plan_client.get_test_suite_by_id(project_id, plan_id,suite_id, False)
             test_points.extend(self.get_test_cases(project_id, plan_id, suite_id))
+            print(f"Fetched suites_id: {suite.id} {suite.name}")
 
         test_data = []
         for test_point in test_points:
@@ -70,7 +78,7 @@ class AzureHandler:
             config_value = test_config = self.test_plan_client.get_test_configuration_by_id(project_id, test_point.configuration.id)
             config_value = test_config.name if test_config else "Nessuna"
             
-            test_run = self.test_plan_client.get_test_results(project=project_id, run_id= tp_result.last_test_run_id) if tp_result.last_test_run_id else None
+            test_run = self.test_client.get_test_results(project=project_id, run_id= tp_result.last_test_run_id) if tp_result.last_test_run_id else None
             notes = test_run[0].comment if test_run and len(test_run) > 0 else ""
             test_data.append((ts_id, ts_name, tc_id, tc_name, outcome, config_name, config_value, notes))
             
@@ -100,6 +108,11 @@ class AzureHandler:
         self.query_maker.constraints.clear()  # Clear constraints after running the query
         print(f"Query executed successfully. Number of work items found: {len(self.work_item_tracking_client.query_by_wiql(wiql=wiql).work_items)}")
         return self.work_item_tracking_client.query_by_wiql(wiql=wiql)
+    
+    def print_work_item(self, work_items: list):
+        for work_item in work_items:
+            wi = self.work_item_tracking_client.get_work_item(work_item.id)
+            print(f"found work item: {wi.id}, {wi.fields['System.Title']}")
     
 
 if __name__ == "__main__":

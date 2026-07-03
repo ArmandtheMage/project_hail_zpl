@@ -1,13 +1,18 @@
 from datetime import datetime
 import os
+from pydoc import text
 
+from openpyxl.formatting import rule
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.styles import Border, Side, Alignment
 from openpyxl.styles import Font
 from openpyxl.styles import PatternFill
+from openpyxl.formatting.rule import FormulaRule
+from openpyxl.styles.differential import DifferentialStyle
 
 class ExcelHandler:
+    ##TODO sposta tutto in un file di configurazione e importalo qui
     THIN_STYLE = Side(style="thin", color="FF0000")
     BORDER_STYLE = Border(left=THIN_STYLE, right=THIN_STYLE, top=THIN_STYLE, bottom=THIN_STYLE)
     BIGGER_BOLD_FONT = Font(size=14, bold=True)
@@ -19,6 +24,23 @@ class ExcelHandler:
     ALIGNMENT_LEFT = Alignment(horizontal="left", vertical="center", wrap_text=True)
     ZPL_QUERY_FILL = ""
     DATE_QUERY_FILL = ""
+
+    #Stili grafici per le celle come colori sfondo, scrite e bordi
+    #colore di sfondo
+    PASS_FILL = PatternFill(start_color="FFC6EFCE", end_color="FFC6EFCE", fill_type="solid")
+    FAIL_FILL = PatternFill(start_color="FFFFC7CE", end_color="FFFFC7CE", fill_type="solid")
+    BLOCKED_FILL = PatternFill(start_color="FFFFEB9C", end_color="FFFFEB9C", fill_type="solid")
+    
+    FULL_RED_FILL = PatternFill(start_color="FFFF0000", end_color="FFFF0000", fill_type="solid")
+    FULL_GREEN_FILL = PatternFill(start_color="FF00FF00", end_color="FF00FF00", fill_type="solid")
+    #colore della scritta
+    PASS_FONT = Font(color="FF009700")
+    FAIL_FONT = Font(color="FF9C0006")
+    BLOCKED_FONT = Font(color="FF9C6500")
+
+    #bordi delle celle
+    LINE_SIDE = Side(style="thin", color="FF000000")
+    DOTTED_SIDE = Side(style="dotted", color="FF000000")
 
     def __init__(self):
         self.workbook = Workbook()
@@ -71,7 +93,7 @@ class ExcelHandler:
         # Data e pagina
         
         self.fill_cell('F1', "Data/Date", sheet, alignment=self.ALIGNMENT_CENTER)
-        self.fill_cell('G1', "DATA ZPL", sheet, alignment=self.ALIGNMENT_CENTER)
+        self.fill_cell('G1', "=SAP.OLELinkServer.ItemObject.1|SAPOLELinkServerDMS!'!Char_Value.DRAW.017.PLCC008.1'", sheet, alignment=self.ALIGNMENT_CENTER)
 
         self.fill_cell('H1', "Pag/Page", sheet, alignment=self.ALIGNMENT_CENTER)
         self.fill_cell('I1', "5/6", sheet, alignment=self.ALIGNMENT_CENTER)
@@ -81,34 +103,36 @@ class ExcelHandler:
         # Laboratorio
         self.fill_cell('B2', "Laboratorio Prove", sheet, font=self.BIGGER_FONT)
         self.fill_cell('B3', "Test Laboratory", sheet, font=self.ITALIC_FONT)
-
         # Numero ZPL
         self.merge_and_fill('C2:D3', "Numero/Number:", sheet, alignment=self.ALIGNMENT_LEFT)
-        self.merge_and_fill('E2:I3', "NUMERO ZPL", sheet, font=Font(bold=True), alignment=self.ALIGNMENT_LEFT)
+        self.merge_and_fill('E2:I3', "=SAP.OLELinkServer.ItemObject.1|SAPOLELinkServerDMS!'!Document.DRAW.DOKNR'", sheet, font=Font(bold=True), alignment=self.ALIGNMENT_LEFT)
 
         # Info test
         self.merge_and_fill('B5:C5', "Esecutore del test / Test performer", sheet)
         self.merge_and_fill('D5:I5', "Inserire nome", sheet)
 
-        
         self.merge_and_fill('B6:C6', "Oggetto di prova/Test Object", sheet)
         self.merge_and_fill('D6:I6', "inserire Gwc0de", sheet)
 
         self.merge_and_fill('B7:C7', "Nome prodotto", sheet)
-        self.merge_and_fill('D7:I7', "inserire NomeProdotto", sheet)
+        self.merge_and_fill('D7:I7', "=SAP.OLELinkServer.ItemObject.1|SAPOLELinkServerDMS!'!Char_Value.DRAW.017.PLCC016.1'", sheet)
 
         self.merge_and_fill('B8:C8', "Firmware Version", sheet)
-        self.merge_and_fill('D8:I8', "inserre FW", sheet)
+        self.merge_and_fill('D8:I8', "inserire FW", sheet)
 
         # Conforme
         self.merge_and_fill('B9:C9', "Conforme/Conformance", sheet)
-        self.merge_and_fill('D9:I9', "", sheet)
+        self.merge_and_fill('D9:I9', "=SAP.OLELinkServer.ItemObject.1|SAPOLELinkServerDMS!'!Char_Value.DRAW.017.PLCC011.1'", sheet)
+        self.color_conform_cell('D9', sheet)
 
         # Nota
         self.merge_and_fill('D10:I10', "Inserire i dispositivi e i rispettivi fw dei prodotti utilizzati", sheet)
 
         # System info
         self.merge_and_fill('B10:C10', "System info & Configuration", sheet)
+
+        self.set_borders("B1", "I3", sheet=sheet, border_style_in=self.LINE_SIDE, border_style_out=self.LINE_SIDE)
+        self.set_borders("B5", "I10", sheet=sheet, border_style_in=self.LINE_SIDE, border_style_out=self.LINE_SIDE)
 
 
     def set_datasheet(self, sheet: Worksheet | None = None, start_row: int = 12, section: str = "", table_titles: list[str] =  [], data: list[tuple] = ()):
@@ -125,8 +149,13 @@ class ExcelHandler:
             self.merge_and_fill(f"B{start_row}:I{start_row}", section, sheet, font=self.BIG_BOLD_FONT)
         
         # set titles
-        for offset, title in enumerate(table_titles):
+        if len(table_titles) < 8:
+                start_merge_col = chr(66 + len(table_titles) - 1)
+                self.merge_and_fill(f"{start_merge_col}{start_row + 1}:I{start_row + 1}","",sheet=sheet)
+                
+        for offset, title in enumerate(table_titles):  
             self.sheet[f"{chr(66 + offset)}{start_row + 1}"] = title
+ 
 
         # set data
         for offset, row_data in enumerate(data):
@@ -134,6 +163,16 @@ class ExcelHandler:
                 if len(row_data) > len(table_titles):
                     raise ValueError(f"Data row has more columns than titles. Row data: {row_data}, Titles: {table_titles}")
                 self.sheet[f"{chr(66 + col_offset)}{start_row + 2 + offset}"] = value
+        #unire le ultime celle per rendere la tabella una B:I
+        if len(table_titles) < 8: ##TODO cambiare 8 e I in magic number
+            start_merge_col = chr(66 + len(table_titles) - 1)
+            for row_idx in range(start_row + 2, start_row + 2 + len(data)):
+                self.merge_and_fill(f"{start_merge_col}{row_idx}:I{row_idx}","",sheet=sheet)       
+
+            
+        
+        self.set_borders(f'B{start_row + 1}', f'I{len(data) + 1 + start_row}', sheet=sheet, border_style_in=self.DOTTED_SIDE, border_style_out=self.LINE_SIDE)
+        
 
     def make_new_sheet(self, sheet_name: str):
         """
@@ -155,6 +194,122 @@ class ExcelHandler:
         full_path = os.path.join(parent_path, filename)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
+
+    def set_borders (self, cell_start: str, cell_end: str, sheet: Worksheet | None = None, border_style_in: Side = LINE_SIDE, border_style_out: Side = LINE_SIDE):
+        if sheet is None:
+            sheet = self.sheet
+
+        cell_range = f"{cell_start}:{cell_end}"
+        
+        min_col= ord(cell_start[0]) - ord("A") + 1
+        min_row= int(cell_start[1:])
+        max_col = ord(cell_end[0]) - ord("A") + 1
+        max_row = int(cell_end[1:])
+
+        for row in range(min_row, max_row + 1):
+            for col in range(min_col, max_col + 1):
+                cell=sheet.cell(row=row, column=col)
+
+                #bordi interni
+                left = border_style_in
+                right = border_style_in
+                top = border_style_in
+                bottom = border_style_in
+
+                # Bordi esterni
+                if row == min_row:
+                    top = border_style_out
+                if row == max_row:
+                    bottom = border_style_out
+                if col == min_col:
+                    left = border_style_out
+                if col == max_col :
+                    right = border_style_out
+
+                cell.border = Border(
+                    left=left,
+                    right=right,
+                    top=top,
+                    bottom=bottom
+                )
+
+    def color_cells(self, cell_start:str, cell_end:str, value:str, fill:PatternFill, font:Font, sheet: Worksheet | None = None):
+        if sheet is None:
+            sheet = self.sheet
+
+        cell_range = f"{cell_start}:{cell_end}"
+        sheet.conditional_formatting.add(
+            cell_range,
+            FormulaRule(
+                formula=[f'ISNUMBER(SEARCH("{value}",{cell_start}))'],
+                fill=fill,
+                font=font
+            )
+        )
+
+    def color_state(self, column:str, sheet: Worksheet | None = None):
+        if sheet is None:
+            sheet = self.sheet
+
+        cell_range = f"{column}13:{column}{sheet.max_row}"
+
+        # PASS
+        self.color_cells(cell_start=f"{column}13", cell_end=f"{column}{sheet.max_row}", value="pass", fill=self.PASS_FILL, font=self.PASS_FONT, sheet=sheet)
+
+        # FAIL
+        self.color_cells(cell_start=f"{column}13", cell_end=f"{column}{sheet.max_row}", value="fail", fill=self.FAIL_FILL, font=self.FAIL_FONT, sheet=sheet)
+
+        # BLOCKED
+        self.color_cells(cell_start=f"{column}13", cell_end=f"{column}{sheet.max_row}", value="BLOCKED", fill=self.BLOCKED_FILL, font=self.BLOCKED_FONT, sheet=sheet)
+
+    def color_conform_cell(self, cell:str, sheet: Worksheet | None = None):
+        if sheet is None:
+            sheet = self.sheet
+
+        # CONFORME
+        self.color_cells(cell_start=cell, cell_end=cell, value="SI", fill=self.FULL_GREEN_FILL,font=self.NORMAL_FONT, sheet=sheet)
+
+        # NON CONFORME
+        self.color_cells(cell_start=cell, cell_end=cell, value="NO", fill=self.FULL_RED_FILL,font=self.NORMAL_FONT, sheet=sheet)
+
+#
+    #def color_state (self, column:str, sheet: Worksheet | None = None):
+    #    if sheet is None:
+    #         sheet = self.sheet
+#
+    #    #col= ord(column)-64
+    #    cell_range = f"{column}13:{column}{sheet.max_row}"
+#
+    #       # PASS
+    #    sheet.conditional_formatting.add(
+    #        cell_range,
+    #        FormulaRule(
+    #            formula=[f'ISNUMBER(SEARCH("pass",${column}13))'],
+    #            fill=self.PASS_FILL,
+    #            font=self.PASS_FONT
+    #        )
+    #    )
+    #
+    #    # FAIL
+    #    sheet.conditional_formatting.add(
+    #        cell_range,
+    #        FormulaRule(
+    #            formula=[f'ISNUMBER(SEARCH("fail",${column}13))'],
+    #            fill=self.FAIL_FILL,
+    #            font=self.FAIL_FONT
+    #        )
+    #    )
+    #
+    #    # BLOCKED
+    #    sheet.conditional_formatting.add(
+    #        cell_range,
+    #        FormulaRule(
+    #            formula=[f'ISNUMBER(SEARCH("BLOCKED",${column}13))'],
+    #            fill=self.BLOCKED_FILL,
+    #            font=self.BLOCKED_FONT
+    #        )
+    #    )
+#
 
 if __name__ == "__main__":
     excel_handler = ExcelHandler()

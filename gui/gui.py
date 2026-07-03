@@ -1,10 +1,4 @@
 
-
-from ast import main
-import os
-from py_compile import main
-import sys
-
 #-------------GUI----------------
 import tkinter as tk
 from tkinter import ttk
@@ -69,6 +63,7 @@ def apri_gui():
                 table_titles=testcase_titles,
                 data=data
             )
+            ex.color_state(column="F")  # per il tc column E is the state column
 
         if stati["Issue"]:
             query_issue = az.make_query(
@@ -76,6 +71,7 @@ def apri_gui():
                 area_path=risultati["issue_path"],
                 found_in_build=risultati["found_in_build"]
             ).work_items
+            az.print_work_item(query_issue)
 
             ex.make_new_sheet("Issue")
             ex.set_common_header()
@@ -87,6 +83,7 @@ def apri_gui():
                 table_titles=table_titles,
                 data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
             )
+            ex.color_state(column="E")  # per il tc column E is the state column
 
         if stati["Changelog"]:
             query_changelog = az.make_query(
@@ -94,6 +91,8 @@ def apri_gui():
                 area_path=risultati["changelog_path"],
                 product_version=risultati["fw_version"]
             ).work_items
+            az.print_work_item(query_changelog)
+
             ex.make_new_sheet("Changelog")
             ex.set_common_header()
             wi_list = []
@@ -104,8 +103,9 @@ def apri_gui():
                 table_titles=table_titles,
                 data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
             )
-
-        ex.save(filename=f"Frontend_Web_v{risultati['fw_version']}", parent_path=risultati["path"])
+            ex.color_state(column="E")  # per il tc column E is the state column
+        save_path = risultati['changelog_path'].split('\\')[-1]
+        ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
         root.destroy()
 
     # --- TOGGLE ---
@@ -125,6 +125,8 @@ def apri_gui():
         # mostra/nasconde frame
         if stati[sezione]:
             frame.grid()
+            if sezione == "Issue":
+                copia_changelog_in_issue
         else:
             frame.grid_remove()
 
@@ -132,6 +134,14 @@ def apri_gui():
             if sezione == "Testcase":
                 entry_tp.delete(0, tk.END)
                 entry_suite.delete(0, tk.END)
+            
+            if sezione == "Changelog":
+                entry_fw_version.delete(0, tk.END)
+                entry_changelog_path.delete(0, tk.END)
+
+            if sezione == "Issue":
+                entry_found_in_build.delete(0, tk.END)
+                entry_issue_path.delete(0, tk.END)
 
     
     def seleziona_cartella():
@@ -143,6 +153,14 @@ def apri_gui():
         if cartella:
             entry_path.delete(0, tk.END)
             entry_path.insert(0, cartella)
+        
+    def copia_changelog_in_issue(event:None):
+        entry_found_in_build.delete(0, tk.END)
+        entry_found_in_build.insert(0, entry_fw_version.get())
+
+        entry_issue_path.delete(0, tk.END)
+        entry_issue_path.insert(0, entry_changelog_path.get())
+
 
     # --- GUI ---
     root = tk.Tk()
@@ -160,7 +178,7 @@ def apri_gui():
     # ---------Path--------- 
     tk.Label(main, text="Path file", bg=BG, fg=TEXT).grid(row=0, column=0, sticky="w", pady=5)
     entry_path = tk.Entry(main, bg=INPUT_BG, fg=BG, width=43)
-    entry_path.insert(0, "C:\\Users\\silvala\\OneDrive - Gewiss S.p.A\\Documenti\\ZPL\\eracle\\")
+    entry_path.insert(0, "C:\\Users\\silvala\\OneDrive - Gewiss S.p.A\\Documenti\\ZPL\\")
     entry_path.grid(row=0, column=1, sticky="w", pady=5,padx=5)
     
     btn_browse = tk.Button(main,text="📁",command=seleziona_cartella, bg=BG,fg="white", width=3,relief="flat")
@@ -224,13 +242,17 @@ def apri_gui():
     frame_ch.grid(row=6, column=1, sticky="w")
     frame_ch.grid_remove()
 
+    #valori
     tk.Label(frame_ch, text="FW Version", bg=BG, fg=TEXT, width=LABEL_WIDTH).grid(row=0, column=0,sticky="w")
     entry_fw_version = tk.Entry(frame_ch, bg=INPUT_BG, fg=BG, width=20)
     entry_fw_version.grid(row=0, column=1)
 
-    tk.Label(frame_ch, text="Path file", bg=BG, fg=TEXT, width=LABEL_WIDTH).grid(row=1, column=0,sticky="w")
+    tk.Label(frame_ch, text="Area Path", bg=BG, fg=TEXT, width=LABEL_WIDTH).grid(row=1, column=0,sticky="w")
     entry_changelog_path = tk.Entry(frame_ch, bg=INPUT_BG, fg=BG, width=20)
     entry_changelog_path.grid(row=1, column=1)
+
+    entry_fw_version.bind("<KeyRelease>", copia_changelog_in_issue)
+    entry_changelog_path.bind("<KeyRelease>", copia_changelog_in_issue)
 
     canvas_ch.bind("<Button-1>", lambda e: toggle("Changelog", canvas_ch, frame_ch))
 
@@ -252,15 +274,14 @@ def apri_gui():
     entry_found_in_build = tk.Entry(frame_is, bg=INPUT_BG, fg=BG, width=20)
     entry_found_in_build.grid(row=0, column=1)
 
-
-    tk.Label(frame_is, text="Path file", bg=BG, fg=TEXT, width=LABEL_WIDTH).grid(row=1, column=0, sticky="w")
+    tk.Label(frame_is, text="Area Path", bg=BG, fg=TEXT, width=LABEL_WIDTH).grid(row=1, column=0, sticky="w")
     entry_issue_path = tk.Entry(frame_is, bg=INPUT_BG, fg=BG, width=20)
     entry_issue_path.grid(row=1, column=1)
 
     canvas_is.bind("<Button-1>", lambda e: toggle("Issue", canvas_is, frame_is))
 
     # =====================================================
-    # BUTTON
+    # BUTTON AVVIA
     # =====================================================
     tk.Button(
         main,

@@ -1,7 +1,7 @@
 
 
 class  QueryMaker:
-    def __init__(self, connection, fields_to_take=[], constraints:list[QueryConstraints]=[]):
+    def __init__(self, connection, fields_to_take=[], constraints=[]):
         self.connection = connection
         self.fields_to_take = self.get_fields_to_take(fields_to_take)
         self._constraints = constraints
@@ -65,6 +65,7 @@ if __name__ == "__main__":
         QueryConstraints.create_constraint_as_tuple("ProductVersion", "CONTAINS", "6.11", isCustomField=True),
         QueryConstraints.create_constraint_as_tuple("AreaPath", "=", "JOINON EVO - RaaS and APP\\MRE\\APP Team")
     ]
+    
 
     query_maker = QueryMaker(connection, constraints=constraints)
     project_name = "JOINON EVO - RaaS and APP"

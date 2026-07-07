@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 from azure.devops.connection import Connection
@@ -12,7 +13,12 @@ from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkI
 from  query_handler import QueryMaker, QueryConstraints
 
 
-load_dotenv()
+# Cerca il .env nella cartella dell'exe (non in _MEIPASS)
+if getattr(sys, 'frozen', False):
+    _env_path = os.path.join(os.path.dirname(sys.executable), '.env')
+else:
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+load_dotenv(_env_path)
 
 personal_access_token = os.getenv('PAT') if  os.getenv('PAT') else ''
 organization_url = os.getenv('organization_url')

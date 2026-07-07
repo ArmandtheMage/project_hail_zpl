@@ -8,8 +8,12 @@ from tkinter import filedialog
 LABEL_WIDTH = 15
 import sys
 import os
-sys.path.append(os.path.join(os.getcwd(), "azure_project"))
-sys.path.append(os.path.join(os.getcwd(), "export"))
+
+# Supporto PyInstaller: usa _MEIPASS se eseguibile, altrimenti la cartella dello script
+BASE_PATH = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(os.path.join(__file__, ".."))))
+
+sys.path.append(os.path.join(BASE_PATH, "azure_project"))
+sys.path.append(os.path.join(BASE_PATH, "export"))
 
 
 from azure_handler import AzureHandler

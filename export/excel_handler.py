@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import sys
 from pydoc import text
 
 from openpyxl.formatting import rule
@@ -107,7 +108,8 @@ class ExcelHandler:
         # Inserire immagine
         # img = Image(os.path.join(os.path.dirname(__file__),"src", "logo.png"))
         # print (f"Image path: {os.path.join(os.path.dirname(__file__),'src', 'logo.png')}")
-        img = Image(os.path.join(os.path.dirname(__file__),"src", "logo_colorato.jpg"))
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        img = Image(os.path.join(base, "export", "src", "logo_colorato.jpg") if hasattr(sys, '_MEIPASS') else os.path.join(os.path.dirname(__file__), "src", "logo_colorato.jpg"))
         # sheet.add_image(img, "B1")
         
         marker = AnchorMarker(

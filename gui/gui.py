@@ -113,7 +113,9 @@ def apri_gui():
             )
             ex.color_state(column="E")  # per il tc column E is the state column
         save_path = risultati['changelog_path'].split('\\')[-1]
-        ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
+        file_path = ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
+        
+        os.startfile(file_path)
         root.destroy()
 
     # --- TOGGLE ---

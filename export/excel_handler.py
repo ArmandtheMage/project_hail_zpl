@@ -215,6 +215,7 @@ class ExcelHandler:
         full_path = os.path.join(parent_path, filename)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
+        return full_path
 
     def set_borders (self, cell_start: str, cell_end: str, sheet: Worksheet | None = None, border_style_in: Side = LINE_SIDE, border_style_out: Side = LINE_SIDE):
         if sheet is None:

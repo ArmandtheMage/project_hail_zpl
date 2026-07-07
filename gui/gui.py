@@ -11,6 +11,10 @@ import os
 sys.path.append(os.path.join(os.getcwd(), "azure_project"))
 sys.path.append(os.path.join(os.getcwd(), "export"))
 
+
+from azure_handler import AzureHandler
+from excel_handler import ExcelHandler
+
 print("stiamo aprendo la GUI!")
 def apri_gui():
     BG = "#242424"
@@ -301,10 +305,6 @@ def apri_gui():
 #-------------------------------------------------------------------
 #------------------------------FINE GUI-----------------------------
 #-------------------------------------------------------------------
-
-
-from azure_handler import AzureHandler
-from excel_handler import ExcelHandler
 
 if __name__ == "__main__":
     parametri = apri_gui()

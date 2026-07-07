@@ -52,7 +52,7 @@ class AzureHandler:
                 return_identity_ref=True,
                 include_point_details=True
         )
-    
+
     def get_test_data(self, project_id, plan_id, suites_id:list = []):
         test_points = []
         print(f"Fetching test data for project_id: {project_id}, plan_id: {plan_id}, suites_id: {suites_id}")
@@ -60,7 +60,7 @@ class AzureHandler:
             print(f"No suites_id provided. Fetching all test suites for project_id: {project_id} and plan_id: {plan_id}")
             test_suites = self.get_test_suites(project_id, plan_id)
             suites_id = [suite.id for suite in test_suites]
-            
+
         for suite_id in suites_id:
             suite = self.test_plan_client.get_test_suite_by_id(project_id, plan_id,suite_id, False)
             test_points.extend(self.get_test_cases(project_id, plan_id, suite_id))
@@ -77,7 +77,7 @@ class AzureHandler:
             config_name = test_point.configuration.name
             config_value = test_config = self.test_plan_client.get_test_configuration_by_id(project_id, test_point.configuration.id)
             config_value = test_config.name if test_config else "Nessuna"
-            
+
             test_run = self.test_client.get_test_results(project=project_id, run_id= tp_result.last_test_run_id) if tp_result.last_test_run_id else None
             notes = test_run[0].comment if test_run and len(test_run) > 0 else ""
             test_data.append((ts_id, ts_name, tc_id, tc_name, outcome, config_name, config_value, notes))

@@ -106,11 +106,9 @@ class ExcelHandler:
         self.sheet.row_dimensions[1].height = 36
 
         # Inserire immagine
-        # img = Image(os.path.join(os.path.dirname(__file__),"src", "logo.png"))
-        # print (f"Image path: {os.path.join(os.path.dirname(__file__),'src', 'logo.png')}")
+        # ? create a function for putting image on sheet
         base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        img = Image(os.path.join(base, "export", "src", "logo_colorato.jpg") if hasattr(sys, '_MEIPASS') else os.path.join(os.path.dirname(__file__), "src", "logo_colorato.jpg"))
-        # sheet.add_image(img, "B1")
+        img = Image(os.path.join(base, "export", "src", "logo.jpg") if hasattr(sys, '_MEIPASS') else os.path.join(os.path.dirname(__file__), "src", "logo.jpg"))
         
         marker = AnchorMarker(
             col=1,  # colonna B (indice base 0)

@@ -1,82 +1,91 @@
 """
-Script per creare l'eseguibile con PyInstaller.
-Scansiona automaticamente le cartelle del progetto e le include nel build.
+Script to create the executable with PyInstaller.
+Automatically scans project folders and includes them in the build.
 """
 import os
 import subprocess
 import sys
 
-# Cartella root del progetto
+# Project root folder
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# Cartelle da includere come dati (moduli + risorse)
-CARTELLE_DA_INCLUDERE = ["azure_project", "export", "gui"]
+# Folders to include as data (modules + resources)
+FOLDERS_TO_INCLUDE = ["azure_project", "export", "gui"]
 
-# Cartelle/file da escludere dalla scansione
-ESCLUDI = {"__pycache__", ".git", "build", "dist", "venv", ".venv", "env"}
+# Folders/files to exclude from scanning
+EXCLUDED = {"__pycache__", ".git", "build", "dist", "venv", ".venv", "env", "version"}
 
-# Nome dell'eseguibile finale
-NOME_EXE = "HailZPL"
+# Read version from file
+VERSION_FILE = os.path.join(ROOT, "version")
+with open(VERSION_FILE, "r") as f:
+    VERSION = f.read().strip()
+
+# Final executable name (with version)
+EXE_NAME = f"HailZPL_v{VERSION}"
 
 # Entry point
 ENTRY_POINT = "run.py"
 
 
-def trova_dati():
-    """Trova tutte le cartelle da aggiungere come --add-data."""
+def find_data():
+    """Scan FOLDERS_TO_INCLUDE and return a list of '--add-data' arguments
+    for PyInstaller, each mapping a local folder to its relative destination."""
     add_data = []
-    for cartella in CARTELLE_DA_INCLUDERE:
-        percorso = os.path.join(ROOT, cartella)
-        if os.path.isdir(percorso):
-            # Aggiunge la cartella intera con il suo path relativo
-            add_data.append(f"{percorso}{os.pathsep}{cartella}")
+    for folder in FOLDERS_TO_INCLUDE:
+        path = os.path.join(ROOT, folder)
+        if os.path.isdir(path):
+            # Add the entire folder with its relative path
+            add_data.append(f"{path}{os.pathsep}{folder}")
     return add_data
 
 
-def trova_hidden_imports():
-    """Trova i moduli Python nelle cartelle del progetto per --hidden-import."""
+def find_hidden_imports():
+    """Discover all .py modules inside FOLDERS_TO_INCLUDE and return them
+    as fully-qualified module names for PyInstaller's --hidden-import flag."""
     hidden = []
-    for cartella in CARTELLE_DA_INCLUDERE:
-        percorso = os.path.join(ROOT, cartella)
-        if not os.path.isdir(percorso):
+    for folder in FOLDERS_TO_INCLUDE:
+        path = os.path.join(ROOT, folder)
+        if not os.path.isdir(path):
             continue
-        for file in os.listdir(percorso):
+        for file in os.listdir(path):
             if file.endswith(".py") and file != "__init__.py":
-                modulo = f"{cartella}.{file[:-3]}"
-                hidden.append(modulo)
+                module = f"{folder}.{file[:-3]}"
+                hidden.append(module)
     return hidden
 
 
 def build():
+    """Assemble the PyInstaller command and execute it.
+    Returns the process exit code (0 on success)."""
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
-        "--name", NOME_EXE,
+        "--name", EXE_NAME,
     ]
 
-    # Aggiungi dati
-    for dato in trova_dati():
-        cmd.extend(["--add-data", dato])
+    # Add data
+    for data in find_data():
+        cmd.extend(["--add-data", data])
 
-    # Aggiungi hidden imports
-    for modulo in trova_hidden_imports():
-        cmd.extend(["--hidden-import", modulo])
+    # Add hidden imports
+    for module in find_hidden_imports():
+        cmd.extend(["--hidden-import", module])
 
     # Entry point
     cmd.append(os.path.join(ROOT, ENTRY_POINT))
 
-    print("Comando PyInstaller:")
+    print("PyInstaller command:")
     print(" ".join(f'"{c}"' if " " in c else c for c in cmd))
     print()
 
-    risultato = subprocess.run(cmd, cwd=ROOT)
-    if risultato.returncode == 0:
-        print(f"\nBuild completato! Eseguibile in: dist/{NOME_EXE}.exe")
+    result = subprocess.run(cmd, cwd=ROOT)
+    if result.returncode == 0:
+        print(f"\nBuild completed! Executable at: dist/{EXE_NAME}.exe")
     else:
-        print(f"\nErrore durante il build (exit code: {risultato.returncode})")
+        print(f"\nBuild error (exit code: {result.returncode})")
     
-    return risultato.returncode
+    return result.returncode
 
 
 if __name__ == "__main__":

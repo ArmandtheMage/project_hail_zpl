@@ -10,6 +10,10 @@ from openpyxl.styles import Font
 from openpyxl.styles import PatternFill
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.drawing.image import Image
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+from openpyxl.utils.units import pixels_to_EMU
+from openpyxl.drawing.xdr import XDRPositiveSize2D
 
 class ExcelHandler:
     ##TODO sposta tutto in un file di configurazione e importalo qui
@@ -99,6 +103,21 @@ class ExcelHandler:
         self.fill_cell('I1', "5/6", sheet, alignment=self.ALIGNMENT_CENTER)
         
         self.sheet.row_dimensions[1].height = 36
+
+        # Inserire immagine
+        # img = Image(os.path.join(os.path.dirname(__file__),"src", "logo.png"))
+        # print (f"Image path: {os.path.join(os.path.dirname(__file__),'src', 'logo.png')}")
+        img = Image(os.path.join(os.path.dirname(__file__),"src", "logo_colorato.jpg"))
+        # sheet.add_image(img, "B1")
+        
+        marker = AnchorMarker(
+            col=1,  # colonna B (indice base 0)
+            row=0,  # riga 1 (indice base 0)
+            colOff=pixels_to_EMU(5),   # padding sinistro 5 px
+            rowOff=pixels_to_EMU(5)    # padding superiore 5 px
+        )
+        img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(pixels_to_EMU(img.width), pixels_to_EMU(img.height)))
+        sheet.add_image(img)
 
         # Laboratorio
         self.fill_cell('B2', "Laboratorio Prove", sheet, font=self.BIGGER_FONT)

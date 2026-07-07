@@ -21,6 +21,15 @@ from excel_handler import ExcelHandler
 
 print("stiamo aprendo la GUI!")
 def apri_gui():
+    """Launch the main Tkinter GUI for report generation.
+
+    Presents input fields for project selection, test plan/suite IDs,
+    changelog and issue parameters. On submit, queries Azure DevOps,
+    builds an Excel report, saves it, and opens it in Excel.
+
+    Returns:
+        dict: A dictionary of all user-entered parameters.
+    """
     BG = "#242424"
     TEXT = "#cecece"
     ORANGE = "#e84e0f"
@@ -32,6 +41,9 @@ def apri_gui():
     ex = ExcelHandler()
     
     def conferma():
+        """Callback for the 'Avvia' button. Collects form values, runs Azure
+        queries for enabled sections (Testcase, Issue, Changelog), populates
+        the Excel workbook, saves and opens the resulting file."""
         #valori comuni
         risultati["project_name"] = combo_project.get()
         risultati["path"] = entry_path.get()
@@ -126,6 +138,14 @@ def apri_gui():
     }
 
     def toggle(sezione, canvas, frame):
+        """Toggle a section on/off. Updates the indicator color, shows/hides
+        the section frame, and clears input fields when deactivating.
+
+        Args:
+            sezione: Section key ('Testcase', 'Changelog', or 'Issue').
+            canvas: Canvas widget containing the toggle circle.
+            frame: Frame widget containing the section's input fields.
+        """
         stati[sezione] = not stati[sezione]
 
         # cambia colore cerchio
@@ -155,6 +175,7 @@ def apri_gui():
 
     
     def seleziona_cartella():
+        """Open a folder selection dialog and update the path entry field."""
         cartella = filedialog.askdirectory(
             initialdir=entry_path.get() if entry_path.get() else "/",
             title="Seleziona cartella"
@@ -165,6 +186,11 @@ def apri_gui():
             entry_path.insert(0, cartella)
         
     def copia_changelog_in_issue(event:None):
+        """Sync changelog fields into the issue section fields.
+
+        Copies FW Version into 'Found in build' and Area Path into
+        the issue Area Path, so the user doesn't have to type them twice.
+        """
         entry_found_in_build.delete(0, tk.END)
         entry_found_in_build.insert(0, entry_fw_version.get())
 

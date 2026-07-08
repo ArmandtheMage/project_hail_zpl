@@ -142,6 +142,7 @@ class ExcelHandler:
 
         self.fill_cell('H1', "Pag/Page", sheet, alignment=self.ALIGNMENT_CENTER)
         self.fill_cell('I1', "5/6", sheet, alignment=self.ALIGNMENT_CENTER)
+        self.sheet["I1"].number_format = "@"
         
         self.sheet.row_dimensions[1].height = 36
 
@@ -153,8 +154,8 @@ class ExcelHandler:
         marker = AnchorMarker(
             col=1,  # colonna B (indice base 0)
             row=0,  # riga 1 (indice base 0)
-            colOff=pixels_to_EMU(5),   # padding sinistro 5 px
-            rowOff=pixels_to_EMU(5)    # padding superiore 5 px
+            colOff=pixels_to_EMU(15),   # padding sinistro 5 px
+            rowOff=pixels_to_EMU(10)    # padding superiore 5 px
         )
         img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(pixels_to_EMU(img.width), pixels_to_EMU(img.height)))
         sheet.add_image(img)
@@ -235,7 +236,12 @@ class ExcelHandler:
         if len(table_titles) < 8: ##TODO cambiare 8 e I in magic number
             start_merge_col = chr(66 + len(table_titles) - 1)
             for row_idx in range(start_row + 2, start_row + 2 + len(data)):
-                self.merge_and_fill(f"{start_merge_col}{row_idx}:I{row_idx}","",sheet=sheet)       
+                self.merge_and_fill(f"{start_merge_col}{row_idx}:I{row_idx}","",sheet=sheet)
+
+        # check if is necessary a param for that
+        for row in sheet.iter_rows(min_row=start_row + 2, max_row=start_row + 2 + len(data), min_col=2, max_col=2):
+            for cell in row:
+                cell.number_format = "@"
 
             
         
@@ -273,6 +279,8 @@ class ExcelHandler:
         filename = filename.replace(".xlsx", f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 
         full_path = os.path.join(parent_path, filename)
+        if not os.path.exists(parent_path):
+            os.makedirs(parent_path)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
         return full_path

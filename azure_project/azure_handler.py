@@ -154,12 +154,14 @@ class AzureHandler:
         Returns:
             Query result containing matching work item references.
         """
-        # query = "SELECT [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags] FROM workitems WHERE "
-        # query += f"[System.TeamProject] = '{project_name}' AND [System.WorkItemType] <> '' AND [Custom.ProductVersion] CONTAINS '{product_version}' AND [System.AreaPath] = '{area_path}'"
-        constraints = [
-            QueryConstraints("WorkItemType", "<>", ""),
-            QueryConstraints("AreaPath", "=", area_path)
-        ]
+        if not (product_version or found_in_build):
+            raise ValueError("Version must be provided for the query.")
+        
+        constraints = [QueryConstraints("WorkItemType", "<>", "")]
+        
+        if area_path:
+            constraints.append(QueryConstraints("AreaPath", "=", area_path))
+
         if product_version:
             constraints.append(QueryConstraints("ProductVersion", "CONTAINS", product_version, isCustomField=True))
         if found_in_build:

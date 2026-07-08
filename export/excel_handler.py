@@ -57,7 +57,10 @@ class ExcelHandler:
     def __init__(self):
         """Initialize a new workbook with a single active sheet."""
         self.workbook = Workbook()
-        self.sheet = self.workbook.active # da modificare con get_sheet_by_name("Sheet1") o altri simili
+        if "Sheet" in self.workbook.sheetnames:
+            self.workbook.remove(self.workbook["Sheet"])
+        self.sheet : Worksheet | None = None
+
 
     def fill_cell(self, cell_number:str, value: str, sheet: Worksheet | None = None,
                   font:Font = Font(), alignment:Alignment = Alignment(),
@@ -76,8 +79,10 @@ class ExcelHandler:
             ValueError: If cell_number is empty.
         """
         if sheet is None:
+            if self.sheet is None:
+                raise ValueError("No active sheet available.")
             sheet = self.sheet
-
+        
         if not cell_number:
             raise ValueError("Cell reference cannot be empty.")
         cell = sheet[cell_number]
@@ -104,6 +109,8 @@ class ExcelHandler:
             fill: Background fill to apply.
         """
         if sheet is None:
+            if self.sheet is None:
+                raise ValueError("No active sheet available.")
             sheet = self.sheet
 
         sheet.merge_cells(cell_range)

@@ -4,3 +4,4 @@ test_report*
 build/
 dist/
 !dist/usage.md
+*spec

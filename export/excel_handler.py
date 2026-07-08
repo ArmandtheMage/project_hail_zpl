@@ -273,6 +273,8 @@ class ExcelHandler:
         filename = filename.replace(".xlsx", f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 
         full_path = os.path.join(parent_path, filename)
+        if not os.path.exists(parent_path):
+            os.makedirs(parent_path)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
         return full_path

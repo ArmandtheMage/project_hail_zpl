@@ -212,9 +212,10 @@ def apri_gui():
     # -------- TOP FIELDS --------
 
     # ---------Path--------- 
+    default_path = os.path.join(os.path.expanduser("~"), "OneDrive - Gewiss S.p.A", "Documenti")
     tk.Label(main, text="Path file", bg=BG, fg=TEXT).grid(row=0, column=0, sticky="w", pady=5)
     entry_path = tk.Entry(main, bg=INPUT_BG, fg=BG, width=43)
-    entry_path.insert(0, "C:\\Users\\silvala\\OneDrive - Gewiss S.p.A\\Documenti\\ZPL\\")
+    entry_path.insert(0, default_path) 
     entry_path.grid(row=0, column=1, sticky="w", pady=5,padx=5)
     
     btn_browse = tk.Button(main,text="📁",command=seleziona_cartella, bg=BG,fg="white", width=3,relief="flat")

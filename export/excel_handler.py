@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import sys
 from pydoc import text
 
 from openpyxl.formatting import rule
@@ -16,6 +17,13 @@ from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.drawing.xdr import XDRPositiveSize2D
 
 class ExcelHandler:
+    """Generator for ZPL (Test Report) Excel workbooks.
+
+    Manages workbook creation, sheet formatting, conditional coloring,
+    and data population following the standard ZPL report layout.
+    Uses openpyxl under the hood.
+    """
+
     ##TODO sposta tutto in un file di configurazione e importalo qui
     THIN_STYLE = Side(style="thin", color="FF0000")
     BORDER_STYLE = Border(left=THIN_STYLE, right=THIN_STYLE, top=THIN_STYLE, bottom=THIN_STYLE)
@@ -47,18 +55,34 @@ class ExcelHandler:
     DOTTED_SIDE = Side(style="dotted", color="FF000000")
 
     def __init__(self):
+        """Initialize a new workbook with a single active sheet."""
         self.workbook = Workbook()
-        self.sheet = self.workbook.active # da modificare con get_sheet_by_name("Sheet1") o altri simili
+        if "Sheet" in self.workbook.sheetnames:
+            self.workbook.remove(self.workbook["Sheet"])
+        self.sheet : Worksheet | None = None
+
 
     def fill_cell(self, cell_number:str, value: str, sheet: Worksheet | None = None,
                   font:Font = Font(), alignment:Alignment = Alignment(),
                   fill:PatternFill = PatternFill()):
-        """
-        Fill a cell with the specified value, font, alignment, and fill.
+        """Write a value into a single cell and apply optional styling.
+
+        Args:
+            cell_number: Cell reference (e.g. "A1", "C12").
+            value: Content to write into the cell.
+            sheet: Target worksheet (defaults to the active sheet).
+            font: Font style to apply.
+            alignment: Alignment to apply.
+            fill: Background fill to apply.
+
+        Raises:
+            ValueError: If cell_number is empty.
         """
         if sheet is None:
+            if self.sheet is None:
+                raise ValueError("No active sheet available.")
             sheet = self.sheet
-
+        
         if not cell_number:
             raise ValueError("Cell reference cannot be empty.")
         cell = sheet[cell_number]
@@ -74,7 +98,19 @@ class ExcelHandler:
     def merge_and_fill(self, cell_range: str, value: str, sheet: Worksheet | None = None,
                        font:Font = Font(), alignment:Alignment = Alignment(),
                        fill:PatternFill = PatternFill()):
+        """Merge a range of cells and write a value into the top-left cell.
+
+        Args:
+            cell_range: Range to merge (e.g. "B2:D2").
+            value: Content to write into the merged cell.
+            sheet: Target worksheet (defaults to the active sheet).
+            font: Font style to apply.
+            alignment: Alignment to apply.
+            fill: Background fill to apply.
+        """
         if sheet is None:
+            if self.sheet is None:
+                raise ValueError("No active sheet available.")
             sheet = self.sheet
 
         sheet.merge_cells(cell_range)
@@ -84,8 +120,13 @@ class ExcelHandler:
 
 
     def set_common_header(self, sheet: Worksheet | None = None):
-        """
-        Draw and fill the common header of a ZPL.
+        """Populate the standard ZPL report header (rows 1-10).
+
+        Includes the company logo, report title, SAP OLE link fields,
+        test performer info, product details, and conformance status.
+
+        Args:
+            sheet: Target worksheet (defaults to the active sheet).
         """
         if sheet is None:
             sheet = self.sheet
@@ -105,10 +146,9 @@ class ExcelHandler:
         self.sheet.row_dimensions[1].height = 36
 
         # Inserire immagine
-        # img = Image(os.path.join(os.path.dirname(__file__),"src", "logo.png"))
-        # print (f"Image path: {os.path.join(os.path.dirname(__file__),'src', 'logo.png')}")
-        img = Image(os.path.join(os.path.dirname(__file__),"src", "logo_colorato.jpg"))
-        # sheet.add_image(img, "B1")
+        # ? create a function for putting image on sheet
+        base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        img = Image(os.path.join(base, "export", "src", "logo.jpg") if hasattr(sys, '_MEIPASS') else os.path.join(os.path.dirname(__file__), "src", "logo.jpg"))
         
         marker = AnchorMarker(
             col=1,  # colonna B (indice base 0)
@@ -155,8 +195,17 @@ class ExcelHandler:
 
 
     def set_datasheet(self, sheet: Worksheet | None = None, start_row: int = 12, section: str = "", table_titles: list[str] =  [], data: list[tuple] = ()):
-        """
-        Draw and fill the specific data for that sheet.
+        """Write a data table with section title, column headers, and rows.
+
+        Automatically handles column merging when the number of titles is less
+        than the available columns (B through I), and applies border formatting.
+
+        Args:
+            sheet: Target worksheet (defaults to the active sheet).
+            start_row: Row number where the section begins.
+            section: Section title displayed above the table.
+            table_titles: List of column header labels.
+            data: List of tuples, each representing a row of data values.
         """
         if sheet is None:
             sheet = self.sheet
@@ -194,13 +243,26 @@ class ExcelHandler:
         
 
     def make_new_sheet(self, sheet_name: str):
-        """
-        Create a new sheet with the specified name.
+        """Create a new worksheet and set it as the active target for subsequent operations.
+
+        Args:
+            sheet_name: Name for the new sheet tab.
         """
         self.sheet = self.workbook.create_sheet(title=sheet_name)
         
 
     def save(self, filename: str = "", parent_path: str = ""):
+        """Save the workbook to disk with a timestamped filename.
+
+        The final filename has the format: <filename>_YYYYMMDD_HHMMSS.xlsx
+
+        Args:
+            filename: Base filename (without timestamp). Defaults to "report_zpl".
+            parent_path: Directory where the file will be saved. Defaults to cwd.
+
+        Returns:
+            The absolute path of the saved .xlsx file.
+        """
         if not parent_path:
             parent_path = os.getcwd()
         if not filename:
@@ -213,8 +275,20 @@ class ExcelHandler:
         full_path = os.path.join(parent_path, filename)
         print(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
+        return full_path
 
     def set_borders (self, cell_start: str, cell_end: str, sheet: Worksheet | None = None, border_style_in: Side = LINE_SIDE, border_style_out: Side = LINE_SIDE):
+        """Apply border formatting to a rectangular cell range.
+
+        Differentiates between inner borders and outer (perimeter) borders.
+
+        Args:
+            cell_start: Top-left cell reference (e.g. "B1").
+            cell_end: Bottom-right cell reference (e.g. "I10").
+            sheet: Target worksheet (defaults to the active sheet).
+            border_style_in: Side style for internal cell borders.
+            border_style_out: Side style for the outer perimeter.
+        """
         if sheet is None:
             sheet = self.sheet
 
@@ -253,6 +327,18 @@ class ExcelHandler:
                 )
 
     def color_cells(self, cell_start:str, cell_end:str, value:str, fill:PatternFill, font:Font, sheet: Worksheet | None = None):
+        """Add a conditional formatting rule that highlights cells containing a value.
+
+        Uses ISNUMBER(SEARCH(...)) so the match is case-insensitive and partial.
+
+        Args:
+            cell_start: First cell of the range.
+            cell_end: Last cell of the range.
+            value: Text to search for inside cells.
+            fill: Background fill to apply when the condition is met.
+            font: Font style to apply when the condition is met.
+            sheet: Target worksheet (defaults to the active sheet).
+        """
         if sheet is None:
             sheet = self.sheet
 
@@ -267,6 +353,15 @@ class ExcelHandler:
         )
 
     def color_state(self, column:str, sheet: Worksheet | None = None):
+        """Apply pass/fail/blocked conditional coloring to an entire column.
+
+        Adds three rules (pass=green, fail=red, blocked=yellow) from row 13
+        to the last used row.
+
+        Args:
+            column: Column letter (e.g. "E", "F").
+            sheet: Target worksheet (defaults to the active sheet).
+        """
         if sheet is None:
             sheet = self.sheet
 
@@ -282,6 +377,12 @@ class ExcelHandler:
         self.color_cells(cell_start=f"{column}13", cell_end=f"{column}{sheet.max_row}", value="BLOCKED", fill=self.BLOCKED_FILL, font=self.BLOCKED_FONT, sheet=sheet)
 
     def color_conform_cell(self, cell:str, sheet: Worksheet | None = None):
+        """Apply conformance coloring to a single cell (green=SI, red=NO).
+
+        Args:
+            cell: Cell reference (e.g. "D9").
+            sheet: Target worksheet (defaults to the active sheet).
+        """
         if sheet is None:
             sheet = self.sheet
 

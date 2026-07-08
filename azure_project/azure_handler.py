@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 
 from azure.devops.connection import Connection
@@ -12,12 +13,24 @@ from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkI
 from  query_handler import QueryMaker, QueryConstraints
 
 
-load_dotenv()
+# Cerca il .env nella cartella dell'exe (non in _MEIPASS)
+if getattr(sys, 'frozen', False):
+    _env_path = os.path.join(os.path.dirname(sys.executable), '.env')
+else:
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+load_dotenv(_env_path)
 
 personal_access_token = os.getenv('PAT') if  os.getenv('PAT') else ''
 organization_url = os.getenv('organization_url')
 
 class AzureHandler:
+    """Client wrapper for Azure DevOps REST API.
+
+    Provides methods to interact with Azure DevOps projects, test plans,
+    test suites, test cases, and work items. Handles authentication via
+    Personal Access Token loaded from a .env file.
+    """
+
     def __init__(self):
         self.credentials = BasicAuthentication('', personal_access_token)
         self.connection = Connection(base_url=organization_url, creds=self.credentials)
@@ -28,9 +41,18 @@ class AzureHandler:
         self.query_maker = QueryMaker(self.connection)
 
     def get_projects(self):
+        """Retrieve all projects accessible from the configured organization."""
         return self.core_client.get_projects()
     
     def get_project(self, project_name):
+        """Find a project by name.
+
+        Args:
+            project_name: Exact name of the Azure DevOps project.
+
+        Returns:
+            The matching project object, or None if not found.
+        """
         projects = self.get_projects()
         for project in projects:
             if project.name == project_name:
@@ -38,12 +60,30 @@ class AzureHandler:
         return None
 
     def get_test_plans(self, project_id):
+        """Retrieve all test plans for a given project."""
         return self.test_plan_client.get_test_plans(project=project_id)
 
     def get_test_suites(self, project_id, plan_id, expand:bool = True):
+        """Retrieve all test suites belonging to a specific test plan.
+
+        Args:
+            project_id: Project name or ID.
+            plan_id: Test plan ID.
+            expand: If True, includes child suite details.
+        """
         return self.test_plan_client.get_test_suites_for_plan(project=project_id, plan_id=plan_id, expand=expand)
 
     def get_test_cases(self, project_id, plan_id, suite_id):
+        """Retrieve all test points (test case instances) for a specific suite.
+
+        Args:
+            project_id: Project name or ID.
+            plan_id: Test plan ID.
+            suite_id: Test suite ID.
+
+        Returns:
+            List of test points including outcome and configuration details.
+        """
         return self.test_plan_client.get_points_list(
                 project=project_id,
                 continuation_token='-2147483648;3000', # TODO remove from here
@@ -54,6 +94,21 @@ class AzureHandler:
         )
 
     def get_test_data(self, project_id, plan_id, suites_id:list = []):
+        """Fetch test results for one or more suites and return structured data.
+
+        Collects test points from the specified suites (or all suites in the plan
+        if none are specified), then enriches each point with configuration and
+        run comment details.
+
+        Args:
+            project_id: Project name or ID.
+            plan_id: Test plan ID.
+            suites_id: List of suite IDs to query. If empty, queries all suites in the plan.
+
+        Returns:
+            List of tuples: (suite_id, suite_name, tc_id, tc_name, outcome,
+            config_name, config_value, notes).
+        """
         test_points = []
         print(f"Fetching test data for project_id: {project_id}, plan_id: {plan_id}, suites_id: {suites_id}")
         if not suites_id:
@@ -85,6 +140,20 @@ class AzureHandler:
         return test_data
 
     def make_query(self, project_name, area_path, product_version="", found_in_build=""):
+        """Build and execute a WIQL query against work items.
+
+        Constructs constraints based on area path and optional filters
+        (product version, found-in-build), then runs the query.
+
+        Args:
+            project_name: Azure DevOps project name.
+            area_path: Full area path to filter on.
+            product_version: Optional product version string (CONTAINS match).
+            found_in_build: Optional build identifier (CONTAINS match).
+
+        Returns:
+            Query result containing matching work item references.
+        """
         # query = "SELECT [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags] FROM workitems WHERE "
         # query += f"[System.TeamProject] = '{project_name}' AND [System.WorkItemType] <> '' AND [Custom.ProductVersion] CONTAINS '{product_version}' AND [System.AreaPath] = '{area_path}'"
         constraints = [
@@ -101,6 +170,14 @@ class AzureHandler:
         return self.run_query(query)
 
     def run_query(self, query:str):
+        """Execute a raw WIQL query string and return the result.
+
+        Args:
+            query: Complete WIQL query string.
+
+        Returns:
+            WorkItemQueryResult with work_items list and metadata.
+        """
         print("*" * 40)
         print(f"Running query: {query}")
         print("*" * 40)
@@ -110,6 +187,7 @@ class AzureHandler:
         return self.work_item_tracking_client.query_by_wiql(wiql=wiql)
     
     def print_work_item(self, work_items: list):
+        """Print a summary (ID + Title) of each work item reference to stdout."""
         for work_item in work_items:
             wi = self.work_item_tracking_client.get_work_item(work_item.id)
             print(f"found work item: {wi.id}, {wi.fields['System.Title']}")

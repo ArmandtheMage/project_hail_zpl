@@ -8,8 +8,12 @@ from tkinter import filedialog
 LABEL_WIDTH = 15
 import sys
 import os
-sys.path.append(os.path.join(os.getcwd(), "azure_project"))
-sys.path.append(os.path.join(os.getcwd(), "export"))
+
+# Supporto PyInstaller: usa _MEIPASS se eseguibile, altrimenti la cartella dello script
+BASE_PATH = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(os.path.join(__file__, ".."))))
+
+sys.path.append(os.path.join(BASE_PATH, "azure_project"))
+sys.path.append(os.path.join(BASE_PATH, "export"))
 
 
 from azure_handler import AzureHandler
@@ -17,6 +21,15 @@ from excel_handler import ExcelHandler
 
 print("stiamo aprendo la GUI!")
 def apri_gui():
+    """Launch the main Tkinter GUI for report generation.
+
+    Presents input fields for project selection, test plan/suite IDs,
+    changelog and issue parameters. On submit, queries Azure DevOps,
+    builds an Excel report, saves it, and opens it in Excel.
+
+    Returns:
+        dict: A dictionary of all user-entered parameters.
+    """
     BG = "#242424"
     TEXT = "#cecece"
     ORANGE = "#e84e0f"
@@ -28,6 +41,9 @@ def apri_gui():
     ex = ExcelHandler()
     
     def conferma():
+        """Callback for the 'Avvia' button. Collects form values, runs Azure
+        queries for enabled sections (Testcase, Issue, Changelog), populates
+        the Excel workbook, saves and opens the resulting file."""
         #valori comuni
         risultati["project_name"] = combo_project.get()
         risultati["path"] = entry_path.get()
@@ -109,7 +125,9 @@ def apri_gui():
             )
             ex.color_state(column="E")  # per il tc column E is the state column
         save_path = risultati['changelog_path'].split('\\')[-1]
-        ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
+        file_path = ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
+        
+        os.startfile(file_path)
         root.destroy()
 
     # --- TOGGLE ---
@@ -120,6 +138,14 @@ def apri_gui():
     }
 
     def toggle(sezione, canvas, frame):
+        """Toggle a section on/off. Updates the indicator color, shows/hides
+        the section frame, and clears input fields when deactivating.
+
+        Args:
+            sezione: Section key ('Testcase', 'Changelog', or 'Issue').
+            canvas: Canvas widget containing the toggle circle.
+            frame: Frame widget containing the section's input fields.
+        """
         stati[sezione] = not stati[sezione]
 
         # cambia colore cerchio
@@ -149,6 +175,7 @@ def apri_gui():
 
     
     def seleziona_cartella():
+        """Open a folder selection dialog and update the path entry field."""
         cartella = filedialog.askdirectory(
             initialdir=entry_path.get() if entry_path.get() else "/",
             title="Seleziona cartella"
@@ -159,6 +186,11 @@ def apri_gui():
             entry_path.insert(0, cartella)
         
     def copia_changelog_in_issue(event:None):
+        """Sync changelog fields into the issue section fields.
+
+        Copies FW Version into 'Found in build' and Area Path into
+        the issue Area Path, so the user doesn't have to type them twice.
+        """
         entry_found_in_build.delete(0, tk.END)
         entry_found_in_build.insert(0, entry_fw_version.get())
 
@@ -180,9 +212,10 @@ def apri_gui():
     # -------- TOP FIELDS --------
 
     # ---------Path--------- 
+    default_path = os.path.join(os.path.expanduser("~"), "OneDrive - Gewiss S.p.A", "Documenti")
     tk.Label(main, text="Path file", bg=BG, fg=TEXT).grid(row=0, column=0, sticky="w", pady=5)
     entry_path = tk.Entry(main, bg=INPUT_BG, fg=BG, width=43)
-    entry_path.insert(0, "C:\\Users\\silvala\\OneDrive - Gewiss S.p.A\\Documenti\\ZPL\\")
+    entry_path.insert(0, default_path) 
     entry_path.grid(row=0, column=1, sticky="w", pady=5,padx=5)
     
     btn_browse = tk.Button(main,text="📁",command=seleziona_cartella, bg=BG,fg="white", width=3,relief="flat")

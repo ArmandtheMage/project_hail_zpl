@@ -1,3 +1,7 @@
 .env
 **/__pycache__/
 test_report*
+build/
+dist/
+!dist/usage.md
+*spec

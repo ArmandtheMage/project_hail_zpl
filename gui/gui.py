@@ -128,7 +128,6 @@ def apri_gui():
         file_path = ex.save(filename=f"{save_path}_{risultati['fw_version']}", parent_path=risultati["path"])
         
         os.startfile(file_path)
-        root.destroy()
 
     # --- TOGGLE ---
     stati = {

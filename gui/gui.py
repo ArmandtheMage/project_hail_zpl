@@ -4,6 +4,9 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import filedialog
+from tkinter.scrolledtext import ScrolledText
+from time import sleep
+
 
 LABEL_WIDTH = 15
 import sys
@@ -14,10 +17,11 @@ BASE_PATH = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(os.path.joi
 
 sys.path.append(os.path.join(BASE_PATH, "azure_project"))
 sys.path.append(os.path.join(BASE_PATH, "export"))
-
+#sys.path.append(os.path.join(BASE_PATH))
 
 from azure_handler import AzureHandler
 from excel_handler import ExcelHandler
+from ZPL_log import ZPLLogger
 
 print("stiamo aprendo la GUI!")
 def apri_gui():
@@ -37,8 +41,11 @@ def apri_gui():
 
     risultati = {}
 
-    az = AzureHandler()
-    ex = ExcelHandler()
+    log_widget = None
+    log = ZPLLogger("ZPLLogger")
+
+    az = AzureHandler(logger=log)  # Initialize AzureHandler with a logger callback
+    ex = ExcelHandler(logger=log)  # Initialize ExcelHandler with a logger callback
     
     def conferma():
         """Callback for the 'Avvia' button. Collects form values, runs Azure
@@ -71,11 +78,15 @@ def apri_gui():
         
         if stati["Testcase"]:
             testcase_titles = ["suiteId", "testSuite", "testCaseId", "testCase", "outcome", "configuration", "configurationValue", "note"]
-            data = az.get_test_data(
-                project_id=risultati["project_name"],
-                plan_id=risultati["tp"],
-                suites_id=risultati["TestSuite_id"]
-            )
+            try:
+                data = az.get_test_data(
+                        project_id=risultati["project_name"],
+                        plan_id=risultati["tp"],
+                        suites_id=risultati["TestSuite_id"]
+                    )
+            except Exception as e:
+                    log(f"Error occurred while fetching test data: {e}")
+                    data = []
             id_trest_suite  = ex.make_new_sheet("Testcase")
             ex.set_common_header()
             ex.set_datasheet(
@@ -104,6 +115,8 @@ def apri_gui():
                 data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
             )
             ex.color_state(column="E")  # per il tc column E is the state column
+
+        sleep(30)
 
         if stati["Changelog"]:
             query_changelog = az.make_query(
@@ -196,11 +209,12 @@ def apri_gui():
         entry_issue_path.delete(0, tk.END)
         entry_issue_path.insert(0, entry_changelog_path.get())
 
+        
 
     # --- GUI ---
     root = tk.Tk()
     root.title("Parametri Report")
-    root.geometry("500x500")
+    #root.geometry("800x800")
     root.configure(bg=BG)
     
 
@@ -215,10 +229,10 @@ def apri_gui():
     tk.Label(main, text="Path file", bg=BG, fg=TEXT).grid(row=0, column=0, sticky="w", pady=5)
     entry_path = tk.Entry(main, bg=INPUT_BG, fg=BG, width=43)
     entry_path.insert(0, default_path)
-    entry_path.grid(row=0, column=1, sticky="w", pady=5,padx=5)
+    entry_path.grid(row=0, column=1, sticky="ew", pady=5,padx=5)
     
     btn_browse = tk.Button(main,text="📁",command=seleziona_cartella, bg=BG,fg="white", width=3,relief="flat")
-    btn_browse.grid(row=0, column=2, sticky="w")
+    btn_browse.grid(row=0, column=1, sticky="e", pady=5)
 
 
     # ---------Project name---------
@@ -236,7 +250,7 @@ def apri_gui():
         "Eracle"
     ]
 
-    combo_project = ttk.Combobox(main, values=project_list, foreground=BG, width=40)
+    combo_project = ttk.Combobox(main, values=project_list, foreground=BG, width=65)
     combo_project.set("LAB Framework")
     combo_project.grid(row=1, column=1, sticky="w", pady=5, padx=5)
 
@@ -330,9 +344,42 @@ def apri_gui():
         pady=5
     ).grid(row=9, column=1, pady=20)
 
+
+
+# =====================================================
+# TERMINALE LOG
+# =====================================================
+
+    tk.Label(
+        main,
+        text="Log",
+        bg=BG,
+        fg=TEXT,
+        font=("Consolas", 10, "bold")
+    ).grid(row=10, column=0, sticky="w", pady=(10,0))
+
+    log_widget = ScrolledText(
+        main,
+        height=10,
+        width=80,
+        bg="black",
+        fg=TEXT,
+        insertbackground="white",
+        font=("Consolas", 9)
+    )
+
+    log_widget.grid(
+        row=11,
+        column=0,
+        columnspan=3,
+        sticky="nsew",
+        pady=(5,0)
+    )
+
+    log.set_frame(log_widget)  # Attach the log widget to the logger
+
     root.mainloop()
     return risultati
-
 
 #-------------------------------------------------------------------
 #------------------------------FINE GUI-----------------------------

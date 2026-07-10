@@ -12,6 +12,8 @@ from azure.devops.v7_0.test_plan.models import *
 from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkItemTrackingClient
 from  query_handler import QueryMaker, QueryConstraints
 
+from logging import Logger
+
 
 # Cerca il .env nella cartella dell'exe (non in _MEIPASS)
 if getattr(sys, 'frozen', False):
@@ -31,7 +33,8 @@ class AzureHandler:
     Personal Access Token loaded from a .env file.
     """
 
-    def __init__(self):
+    def __init__(self, logger: Logger=None ):
+        self.logger = logger
         self.credentials = BasicAuthentication('', personal_access_token)
         self.connection = Connection(base_url=organization_url, creds=self.credentials)
         self.core_client :CoreClient = self.connection.clients.get_core_client()
@@ -39,6 +42,10 @@ class AzureHandler:
         self.test_plan_client :TestPlanClient = self.connection.clients.get_test_plan_client()
         self.work_item_tracking_client :WorkItemTrackingClient = self.connection.clients_v7_0.get_work_item_tracking_client()
         self.query_maker = QueryMaker(self.connection)
+
+    #def logger.info(self, msg):
+    #    if self.logger:
+    #        self.logger.info(msg)
 
     def get_projects(self):
         """Retrieve all projects accessible from the configured organization."""
@@ -110,16 +117,16 @@ class AzureHandler:
             config_name, config_value, notes).
         """
         test_points = []
-        print(f"Fetching test data for project_id: {project_id}, plan_id: {plan_id}, suites_id: {suites_id}")
+        self.logger.info(f"Fetching test data for project_id: {project_id}, plan_id: {plan_id}, suites_id: {suites_id}")
         if not suites_id:
-            print(f"No suites_id provided. Fetching all test suites for project_id: {project_id} and plan_id: {plan_id}")
+            self.logger.info(f"No suites_id provided. Fetching all test suites for project_id: {project_id} and plan_id: {plan_id}")
             test_suites = self.get_test_suites(project_id, plan_id)
             suites_id = [suite.id for suite in test_suites]
 
         for suite_id in suites_id:
             suite = self.test_plan_client.get_test_suite_by_id(project_id, plan_id,suite_id, False)
             test_points.extend(self.get_test_cases(project_id, plan_id, suite_id))
-            print(f"Fetched suites_id: {suite.id} {suite.name}")
+            self.logger.info(f"Fetched suites_id: {suite.id} {suite.name}")
 
         test_data = []
         for test_point in test_points:
@@ -181,18 +188,18 @@ class AzureHandler:
             WorkItemQueryResult with work_items list and metadata.
         """
         print("*" * 40)
-        print(f"Running query: {query}")
+        self.logger.info(f"Running query: {query}")
         print("*" * 40)
         wiql = Wiql(query=query)
         self.query_maker.constraints.clear()  # Clear constraints after running the query
-        print(f"Query executed successfully. Number of work items found: {len(self.work_item_tracking_client.query_by_wiql(wiql=wiql).work_items)}")
+        self.logger.info(f"Query executed successfully. Number of work items found: {len(self.work_item_tracking_client.query_by_wiql(wiql=wiql).work_items)}")
         return self.work_item_tracking_client.query_by_wiql(wiql=wiql)
     
     def print_work_item(self, work_items: list):
         """Print a summary (ID + Title) of each work item reference to stdout."""
         for work_item in work_items:
             wi = self.work_item_tracking_client.get_work_item(work_item.id)
-            print(f"found work item: {wi.id}, {wi.fields['System.Title']}")
+            #self.logger.info(f"found work item: {wi.id}, {wi.fields['System.Title']}")
     
 
 if __name__ == "__main__":
@@ -205,10 +212,10 @@ if __name__ == "__main__":
 
     query_result = handler.make_query(project_name, area_path, product_version)
 
-    print(f"Query Result for Project: {project_name}, Area Path: {area_path}, Product Version: {product_version}")
-    print(f"Total Work Items Found: {len(query_result.work_items)}")
+    handler.logger.info(f"Query Result for Project: {project_name}, Area Path: {area_path}, Product Version: {product_version}")
+    handler.logger.info(f"Total Work Items Found: {len(query_result.work_items)}")
     print("-" * 50)
     for work_item in query_result.work_items: # As WorkItemReference
         work_item = handler.work_item_tracking_client.get_work_item(work_item.id)
-        print(f"Work Item ID: {work_item.id}, title: {work_item.fields['System.Title']}, State: {work_item.fields['System.State']}, ProductVersion: {work_item.fields.get('Custom.ProductVersion', 'N/A')}, AreaPath: {work_item.fields['System.AreaPath']}")
+        handler.logger.info(f"Work Item ID: {work_item.id}, title: {work_item.fields['System.Title']}, State: {work_item.fields['System.State']}, ProductVersion: {work_item.fields.get('Custom.ProductVersion', 'N/A')}, AreaPath: {work_item.fields['System.AreaPath']}")
         print("-" * 50)

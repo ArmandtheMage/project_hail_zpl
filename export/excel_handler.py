@@ -16,6 +16,9 @@ from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
 from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.drawing.xdr import XDRPositiveSize2D
 
+from logging import Logger
+
+
 class ExcelHandler:
     """Generator for ZPL (Test Report) Excel workbooks.
 
@@ -54,7 +57,8 @@ class ExcelHandler:
     LINE_SIDE = Side(style="thin", color="FF000000")
     DOTTED_SIDE = Side(style="dotted", color="FF000000")
 
-    def __init__(self):
+    def __init__(self,logger : Logger=None):
+        self.logger = logger
         """Initialize a new workbook with a single active sheet."""
         self.workbook = Workbook()
         if "Sheet" in self.workbook.sheetnames:
@@ -282,6 +286,7 @@ class ExcelHandler:
         if not os.path.exists(parent_path):
             os.makedirs(parent_path)
         print(f"Saving Excel file to: {full_path}")
+        self.logger.info(f"Saving Excel file to: {full_path}")
         self.workbook.save(full_path)
         return full_path
 
@@ -400,44 +405,9 @@ class ExcelHandler:
         # NON CONFORME
         self.color_cells(cell_start=cell, cell_end=cell, value="NO", fill=self.FULL_RED_FILL,font=self.NORMAL_FONT, sheet=sheet)
 
-#
-    #def color_state (self, column:str, sheet: Worksheet | None = None):
-    #    if sheet is None:
-    #         sheet = self.sheet
-#
-    #    #col= ord(column)-64
-    #    cell_range = f"{column}13:{column}{sheet.max_row}"
-#
-    #       # PASS
-    #    sheet.conditional_formatting.add(
-    #        cell_range,
-    #        FormulaRule(
-    #            formula=[f'ISNUMBER(SEARCH("pass",${column}13))'],
-    #            fill=self.PASS_FILL,
-    #            font=self.PASS_FONT
-    #        )
-    #    )
-    #
-    #    # FAIL
-    #    sheet.conditional_formatting.add(
-    #        cell_range,
-    #        FormulaRule(
-    #            formula=[f'ISNUMBER(SEARCH("fail",${column}13))'],
-    #            fill=self.FAIL_FILL,
-    #            font=self.FAIL_FONT
-    #        )
-    #    )
-    #
-    #    # BLOCKED
-    #    sheet.conditional_formatting.add(
-    #        cell_range,
-    #        FormulaRule(
-    #            formula=[f'ISNUMBER(SEARCH("BLOCKED",${column}13))'],
-    #            fill=self.BLOCKED_FILL,
-    #            font=self.BLOCKED_FONT
-    #        )
-    #    )
-#
+    #def write_log(self, msg):
+    #    if self.logger:
+    #        self.logger(msg)
 
 if __name__ == "__main__":
     excel_handler = ExcelHandler()

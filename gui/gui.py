@@ -73,19 +73,8 @@ class GUI():
 
         self.read_parameters()
         
-        if self.stati["Testcase"]:
-            self.log.info("Generazione foglio Testcase...")
-            self.generate_testcase_sheet()
-
-        if self.stati["Issue"]:
-            self.log.info("Generazione foglio Issue...") 
-            self.generate_issue_sheet()
-
-        if self.stati["Changelog"]:
-            self.log.info("Generazione foglio Changelog...")
-            self.generate_changelog_sheet()
-
-        self.save_report()
+    #TODO
+    # fai un def che da i parametr a orchestratpr    
 
     def read_parameters(self):
         """Read values from the GUI input fields and store them in self.parameters."""
@@ -115,80 +104,7 @@ class GUI():
         # id, title, workitemtype, state, tags
         table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         
-    def generate_testcase_sheet(self):
-
-            testcase_titles = ["suiteId", "testSuite", "testCaseId", "testCase", "outcome", "configuration", "configurationValue", "note"]
-            try:
-                data = self.az.get_test_data(
-                        project_id=self.parameters.project_name,
-                        plan_id=self.parameters.tp,
-                        suites_id=self.parameters.TestSuite_id
-                    )
-            except Exception as e:
-                    self.log.info(f"Error occurred while fetching test data: {e}")
-                    data = []
-            self.ex.make_new_sheet("Testcase")
-            self.ex.set_common_header()
-            self.ex.set_datasheet(
-                section="ELENCO TEST CASE / TEST CASE LIST",
-                table_titles=testcase_titles,
-                data=data
-            )
-            self.ex.color_state(column="F")  # per il tc column E is the state column
-
-    def generate_issue_sheet(self):
-
-        issue_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
-        query_issue = self.az.make_query(
-            project_name=self.parameters.project_name,
-            area_path=self.parameters.issue_path,
-            found_in_build=self.parameters.found_in_build
-        ).work_items
-        self.az.print_work_item(query_issue)
-        self.ex.make_new_sheet("Issue")
-        self.ex.set_common_header()
-        wi_list = []
-
-        for wi_ref in query_issue:
-            wi_list.append(self.az.work_item_tracking_client.get_work_item(wi_ref.id))
-        self.ex.set_datasheet(
-            section="ELENCO ISSUE E BUG / ISSUE AND BUG LIST",
-            table_titles=issue_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
-        )
-        self.ex.color_state(column="E")  # per il tc column E is the state column
-
-    def generate_changelog_sheet(self):
-        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
-        query_changelog = self.az.make_query(
-            project_name=self.parameters.project_name,
-            area_path=self.parameters.changelog_path,
-            product_version=self.parameters.fw_version
-        ).work_items
-        self.az.print_work_item(query_changelog)
-        self.ex.make_new_sheet("Changelog")
-        self.ex.set_common_header()
-        wi_list = []
-
-        for wi_ref in query_changelog:
-            wi_list.append(self.az.work_item_tracking_client.get_work_item(wi_ref.id))
-        self.ex.set_datasheet(
-            section="ELENCO CHANGELOG / CHANGELOG LIST",
-            table_titles=table_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
-        )
-        self.ex.color_state(column="E")  # per il tc column E is the state column
-
-    def save_report(self):
-        """Save the Excel report to the specified path with a filename based on the changelog path and firmware version, then open it in Excel."""
-
-        save_path = self.parameters.changelog_path.split('\\')[-1]
-        name = f"{save_path}_{self.parameters.fw_version}" if self.stati["Changelog"] or self.stati["Issue"] else f"{save_path}_Testcase"
-
-        file_path = self.ex.save(filename=f"{name}", parent_path=self.parameters.path)
-        
-        os.startfile(file_path)
-
+    
     ## --- TOGGLE ---
 
     def toggle(self,sezione, canvas, frame):

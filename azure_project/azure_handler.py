@@ -187,9 +187,7 @@ class AzureHandler:
         Returns:
             WorkItemQueryResult with work_items list and metadata.
         """
-        print("*" * 40)
-        self.logger.info(f"Running query: {query}")
-        print("*" * 40)
+        self.logger.debug(f"Running query: {query}")
         wiql = Wiql(query=query)
         self.query_maker.constraints.clear()  # Clear constraints after running the query
         self.logger.info(f"Query executed successfully. Number of work items found: {len(self.work_item_tracking_client.query_by_wiql(wiql=wiql).work_items)}")

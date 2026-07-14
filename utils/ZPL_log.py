@@ -8,12 +8,6 @@ class ZPLLogger(logging.Logger):
         super().__init__(name)
         self.log_widget = log_widget
 
-    #def log(self, level, msg, *args, **kwargs):
-    #    super().log(level, msg, *args, **kwargs)
-    #    if self.log_widget:
-    #        self.log_widget.insert(logging.END, f"{msg}\n")
-    #        self.log_widget.see(logging.END)
-
     #def funzione agganciare il widget di log al logger, (in modo che log scriva sul terminale della gui)
     def set_frame(self, widget : ScrolledText):
         self.log_widget = widget
@@ -25,3 +19,4 @@ class ZPLLogger(logging.Logger):
         if self.log_widget:
             self.log_widget.insert(tk_END, f"{msg}\n")
             self.log_widget.see(tk_END)
+            self.log_widget.update()

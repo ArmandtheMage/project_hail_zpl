@@ -45,8 +45,7 @@ class GUI():
     def __init__(self, logger: ZPLLogger = None, azure_handler: AzureHandler = None, excel_handler: ExcelHandler = None):
         self.parameters = GUIparameters()
 
-        log_widget = None
-        self.log = ZPLLogger("ZPLLogger")
+        self.log = logger
 
         self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
         self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)
@@ -114,7 +113,7 @@ class GUI():
         self.parameters.issue_path = self.entry_issue_path.get()
 
         # id, title, workitemtype, state, tags
-        table_titles = ["id", "workItemType", "title", "state", "tags", "notes"]
+        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         
     def generate_testcase_sheet(self):
 
@@ -139,7 +138,7 @@ class GUI():
 
     def generate_issue_sheet(self):
 
-        issue_titles = ["id", "workItemType", "title", "state", "tags", "notes"]
+        issue_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         query_issue = self.az.make_query(
             project_name=self.parameters.project_name,
             area_path=self.parameters.issue_path,
@@ -155,12 +154,12 @@ class GUI():
         self.ex.set_datasheet(
             section="ELENCO ISSUE E BUG / ISSUE AND BUG LIST",
             table_titles=issue_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
+            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
         )
         self.ex.color_state(column="E")  # per il tc column E is the state column
 
     def generate_changelog_sheet(self):
-        table_titles = ["id", "workItemType", "title", "state", "tags", "notes"]
+        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         query_changelog = self.az.make_query(
             project_name=self.parameters.project_name,
             area_path=self.parameters.changelog_path,
@@ -176,7 +175,7 @@ class GUI():
         self.ex.set_datasheet(
             section="ELENCO CHANGELOG / CHANGELOG LIST",
             table_titles=table_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", "")) for wi in wi_list]
+            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
         )
         self.ex.color_state(column="E")  # per il tc column E is the state column
 

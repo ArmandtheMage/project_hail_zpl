@@ -25,3 +25,4 @@ class ZPLLogger(logging.Logger):
             self.log_widget.insert(tk_END, f"{msg}\n")
             self.log_widget.see(tk_END)
             self.log_widget.update()
+

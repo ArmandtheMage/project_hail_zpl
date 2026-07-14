@@ -46,7 +46,7 @@ class GUI():
         self.parameters = GUIparameters()
 
         log_widget = None
-        self.log = ZPLLogger("ZPLLogger")
+        self.log = logger
 
         self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
         self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)

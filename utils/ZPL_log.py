@@ -9,7 +9,7 @@ class ZPLLogger(logging.Logger):
         self.setLevel(log_level)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(log_level)
-        console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        console_handler.setFormatter(logging.Formatter("[%(levelname)s]@%(asctime)s: %(message)s"))
         self.addHandler(console_handler)
         self.log_widget = log_widget
 

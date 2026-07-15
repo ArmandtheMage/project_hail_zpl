@@ -26,6 +26,9 @@ EXE_NAME = f"HailZPL_v{VERSION}"
 # Entry point
 ENTRY_POINT = "run.py"
 
+# Parse build arguments
+DEBUG_BUILD = "--debug" in sys.argv
+
 
 def find_data():
     """Scan FOLDERS_TO_INCLUDE and return a list of '--add-data' arguments
@@ -60,9 +63,11 @@ def build():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
-        "--windowed",
         "--name", EXE_NAME,
     ]
+
+    if not DEBUG_BUILD:
+        cmd.append("--windowed")
 
     # Add data
     for data in find_data():
@@ -74,6 +79,11 @@ def build():
 
     # Entry point
     cmd.append(os.path.join(ROOT, ENTRY_POINT))
+
+    # Pass --debug flag to the executable
+    if DEBUG_BUILD:
+        EXE_NAME_DEBUG = f"{EXE_NAME}_debug"
+        cmd[cmd.index(EXE_NAME)] = EXE_NAME_DEBUG
 
     print("PyInstaller command:")
     print(" ".join(f'"{c}"' if " " in c else c for c in cmd))

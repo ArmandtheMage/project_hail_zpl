@@ -1,13 +1,12 @@
 
 #-------------GUI----------------
-from asyncio import log
-from py_compile import main
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
-from dataclasses import dataclass, field
+from orchestrator import ReportOrchestrator, ReportParameters
+
 
 import sys
 import os
@@ -19,8 +18,9 @@ sys.path.append(os.path.join(BASE_PATH, "azure_project"))
 sys.path.append(os.path.join(BASE_PATH, "export"))
 #sys.path.append(os.path.join(BASE_PATH))
 
-from azure_handler import AzureHandler
-from excel_handler import ExcelHandler
+#from azure_handler import AzureHandler
+#from excel_handler import ExcelHandler
+import orchestrator
 from utils.ZPL_log import ZPLLogger
 
 BG = "#242424"
@@ -42,13 +42,14 @@ class GUI():
         dict: A dictionary of all user-entered parameters.
     """
     
-    def __init__(self, logger: ZPLLogger = None, azure_handler: AzureHandler = None, excel_handler: ExcelHandler = None):
-        self.parameters = GUIparameters()
+    def __init__(self, logger: ZPLLogger = None, azure_handler=None, excel_handler=None):
+        self.parameters = ReportParameters()
 
-        self.log = logger
+        self.log = logger if logger else ZPLLogger("ZPL_Logger")
 
-        self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
-        self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)
+        #self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
+        #self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)
+        self.orchestrator = ReportOrchestrator(logger=self.log)
 
         self.stati = {
             "Testcase": True,
@@ -70,11 +71,15 @@ class GUI():
         """Callback for the 'Avvia' button. Collects form values, runs Azure
         queries for enabled sections (Testcase, Issue, Changelog), populates
         the Excel workbook, saves and opens the resulting file."""
-
         self.read_parameters()
-        
-    #TODO
-    # fai un def che da i parametr a orchestratpr    
+        self.send_parameters_to_orchestrator()
+
+    def send_parameters_to_orchestrator(self):
+        """Send the collected parameters and section states to the orchestrator
+        for report generation."""
+        self.orchestrator.generate_report(self.parameters, self.stati)
+        #fagli generare l'evento che triggera l'orchetrator - vedi riga 460
+
 
     def read_parameters(self):
         """Read values from the GUI input fields and store them in self.parameters."""
@@ -102,7 +107,7 @@ class GUI():
         self.parameters.issue_path = self.entry_issue_path.get()
 
         # id, title, workitemtype, state, tags
-        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
+        #table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         
     
     ## --- TOGGLE ---
@@ -187,17 +192,7 @@ class GUI():
         #---project name---
         tk.Label(self.main, text="Project name", bg=BG, fg=TEXT).grid(row=1, column=0, sticky="w", pady=5)
 
-        project_list = [
-            "HappyHome20",
-            "HappyHome10",
-            "Fenice",
-            "ThermoICE2",
-            "SmartRF",
-            "JOINON EVO - RaaS and APP",
-            "Energy_Metering",
-            "LAB Framework",
-            "Eracle"
-        ]
+        project_list = self.orchestrator.get_available_projects()
 
         self.combo_project = ttk.Combobox(self.main, values=project_list, foreground=BG, width=65)
         self.combo_project.set("LAB Framework")
@@ -362,17 +357,6 @@ class ToggleSection:
         # Call the provided callback to handle any additional logic
         if self.toggle_callback:
             self.toggle_callback(self.title, self.canvas, self.frame)
-
-@dataclass
-class GUIparameters:
-    project_name: str = ""
-    path: str = ""
-    tp: int = 0
-    TestSuite_id: list = field(default_factory=list)
-    fw_version: str = ""
-    changelog_path: str = ""
-    found_in_build: str = ""
-    issue_path: str = ""
 
 
 #-------------------------------------------------------------------

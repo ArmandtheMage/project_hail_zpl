@@ -10,7 +10,11 @@ from azure.devops.v7_0.test.test_client import TestClient
 from azure.devops.v7_0.test_plan.test_plan_client import TestPlanClient
 from azure.devops.v7_0.test_plan.models import *
 from azure.devops.v7_0.work_item_tracking.work_item_tracking_client import WorkItemTrackingClient
-from  query_handler import QueryMaker, QueryConstraints
+
+try:
+    from .query_handler import QueryMaker, QueryConstraints
+except ImportError:
+    from query_handler import QueryMaker, QueryConstraints
 
 from logging import Logger
 

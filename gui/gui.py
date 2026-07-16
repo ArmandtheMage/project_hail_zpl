@@ -1,13 +1,12 @@
 
 #-------------GUI----------------
-from asyncio import log
-from py_compile import main
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
-from dataclasses import dataclass, field
+from orchestrator import ReportOrchestrator, ReportParameters
+
 
 import sys
 import os
@@ -19,8 +18,9 @@ sys.path.append(os.path.join(BASE_PATH, "azure_project"))
 sys.path.append(os.path.join(BASE_PATH, "export"))
 #sys.path.append(os.path.join(BASE_PATH))
 
-from azure_handler import AzureHandler
-from excel_handler import ExcelHandler
+#from azure_handler import AzureHandler
+#from excel_handler import ExcelHandler
+import orchestrator
 from utils.ZPL_log import ZPLLogger
 
 BG = "#242424"
@@ -42,13 +42,14 @@ class GUI():
         dict: A dictionary of all user-entered parameters.
     """
     
-    def __init__(self, logger: ZPLLogger = None, azure_handler: AzureHandler = None, excel_handler: ExcelHandler = None):
-        self.parameters = GUIparameters()
+    def __init__(self, logger: ZPLLogger = None, azure_handler=None, excel_handler=None):
+        self.parameters = ReportParameters()
 
-        self.log = logger
+        self.log = logger if logger else ZPLLogger("ZPL_Logger")
 
-        self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
-        self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)
+        #self.az = azure_handler if azure_handler else AzureHandler(logger=self.log)
+        #self.ex = excel_handler if excel_handler else ExcelHandler(logger=self.log)
+        self.orchestrator = ReportOrchestrator(logger=self.log)
 
         self.stati = {
             "Testcase": True,
@@ -70,22 +71,15 @@ class GUI():
         """Callback for the 'Avvia' button. Collects form values, runs Azure
         queries for enabled sections (Testcase, Issue, Changelog), populates
         the Excel workbook, saves and opens the resulting file."""
-
         self.read_parameters()
-        
-        if self.stati["Testcase"]:
-            self.log.info("Generazione foglio Testcase...")
-            self.generate_testcase_sheet()
+        self.send_parameters_to_orchestrator()
 
-        if self.stati["Issue"]:
-            self.log.info("Generazione foglio Issue...") 
-            self.generate_issue_sheet()
+    def send_parameters_to_orchestrator(self):
+        """Send the collected parameters and section states to the orchestrator
+        for report generation."""
+        self.orchestrator.generate_report(self.parameters, self.stati)
+        #fagli generare l'evento che triggera l'orchetrator - vedi riga 460
 
-        if self.stati["Changelog"]:
-            self.log.info("Generazione foglio Changelog...")
-            self.generate_changelog_sheet()
-
-        self.save_report()
 
     def read_parameters(self):
         """Read values from the GUI input fields and store them in self.parameters."""
@@ -113,82 +107,9 @@ class GUI():
         self.parameters.issue_path = self.entry_issue_path.get()
 
         # id, title, workitemtype, state, tags
-        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
+        #table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
         
-    def generate_testcase_sheet(self):
-
-            testcase_titles = ["suiteId", "testSuite", "testCaseId", "testCase", "outcome", "configuration", "configurationValue", "note"]
-            try:
-                data = self.az.get_test_data(
-                        project_id=self.parameters.project_name,
-                        plan_id=self.parameters.tp,
-                        suites_id=self.parameters.TestSuite_id
-                    )
-            except Exception as e:
-                    self.log.info(f"Error occurred while fetching test data: {e}")
-                    data = []
-            self.ex.make_new_sheet("Testcase")
-            self.ex.set_common_header()
-            self.ex.set_datasheet(
-                section="ELENCO TEST CASE / TEST CASE LIST",
-                table_titles=testcase_titles,
-                data=data
-            )
-            self.ex.color_state(column="F")  # per il tc column E is the state column
-
-    def generate_issue_sheet(self):
-
-        issue_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
-        query_issue = self.az.make_query(
-            project_name=self.parameters.project_name,
-            area_path=self.parameters.issue_path,
-            found_in_build=self.parameters.found_in_build
-        ).work_items
-        self.az.print_work_item(query_issue)
-        self.ex.make_new_sheet("Issue")
-        self.ex.set_common_header()
-        wi_list = []
-
-        for wi_ref in query_issue:
-            wi_list.append(self.az.work_item_tracking_client.get_work_item(wi_ref.id))
-        self.ex.set_datasheet(
-            section="ELENCO ISSUE E BUG / ISSUE AND BUG LIST",
-            table_titles=issue_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
-        )
-        self.ex.color_state(column="E")  # per il tc column E is the state column
-
-    def generate_changelog_sheet(self):
-        table_titles = ["id", "workItemType", "title", "state", "tags", "priority", "notes"]
-        query_changelog = self.az.make_query(
-            project_name=self.parameters.project_name,
-            area_path=self.parameters.changelog_path,
-            product_version=self.parameters.fw_version
-        ).work_items
-        self.az.print_work_item(query_changelog)
-        self.ex.make_new_sheet("Changelog")
-        self.ex.set_common_header()
-        wi_list = []
-
-        for wi_ref in query_changelog:
-            wi_list.append(self.az.work_item_tracking_client.get_work_item(wi_ref.id))
-        self.ex.set_datasheet(
-            section="ELENCO CHANGELOG / CHANGELOG LIST",
-            table_titles=table_titles,
-            data=[(wi.id, wi.fields["System.WorkItemType"], wi.fields["System.Title"], wi.fields["System.State"], wi.fields.get("System.Tags", ""), wi.fields.get("Microsoft.VSTS.Common.Priority", ""), wi.fields.get("System.Notes", "")) for wi in wi_list]
-        )
-        self.ex.color_state(column="E")  # per il tc column E is the state column
-
-    def save_report(self):
-        """Save the Excel report to the specified path with a filename based on the changelog path and firmware version, then open it in Excel."""
-
-        save_path = self.parameters.changelog_path.split('\\')[-1]
-        name = f"{save_path}_{self.parameters.fw_version}" if self.stati["Changelog"] or self.stati["Issue"] else f"{save_path}_Testcase"
-
-        file_path = self.ex.save(filename=f"{name}", parent_path=self.parameters.path)
-        
-        os.startfile(file_path)
-
+    
     ## --- TOGGLE ---
 
     def toggle(self,sezione, canvas, frame):
@@ -271,17 +192,7 @@ class GUI():
         #---project name---
         tk.Label(self.main, text="Project name", bg=BG, fg=TEXT).grid(row=1, column=0, sticky="w", pady=5)
 
-        project_list = [
-            "HappyHome20",
-            "HappyHome10",
-            "Fenice",
-            "ThermoICE2",
-            "SmartRF",
-            "JOINON EVO - RaaS and APP",
-            "Energy_Metering",
-            "LAB Framework",
-            "Eracle"
-        ]
+        project_list = self.orchestrator.get_available_projects()
 
         self.combo_project = ttk.Combobox(self.main, values=project_list, foreground=BG, width=65)
         self.combo_project.set("LAB Framework")
@@ -446,17 +357,6 @@ class ToggleSection:
         # Call the provided callback to handle any additional logic
         if self.toggle_callback:
             self.toggle_callback(self.title, self.canvas, self.frame)
-
-@dataclass
-class GUIparameters:
-    project_name: str = ""
-    path: str = ""
-    tp: int = 0
-    TestSuite_id: list = field(default_factory=list)
-    fw_version: str = ""
-    changelog_path: str = ""
-    found_in_build: str = ""
-    issue_path: str = ""
 
 
 #-------------------------------------------------------------------
